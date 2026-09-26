@@ -1,16 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Box, CircularProgress, Typography } from "@mui/material";
-
 import { exerciseOptions, fetchData } from "../utils/fetchData";
-
 import Detail from "../components/Detail";
 import ExerciseVideos from "../components/ExerciseVideos";
 import SimilarExercises from "../components/SimilarExercises";
 
 const ExerciseDetail = () => {
-  const { id } = useParams();
 
+  const { id } = useParams();
   const [exerciseDetail, setExerciseDetail] = useState(null);
   const [exerciseVideos, setExerciseVideos] = useState([]);
   const [targetMuscleExercises, setTargetMuscleExercises] = useState([]);
@@ -24,20 +22,14 @@ const ExerciseDetail = () => {
 
         const exerciseDbUrl = "https://exercisedb.p.rapidapi.com";
 
-        // =========================================
         // 1. EXERCISE DETAIL
-        // =========================================
 
         const exerciseDetailData = await fetchData(
           `${exerciseDbUrl}/exercises/exercise/${id}`,
           exerciseOptions,
         );
 
-        console.log("Exercise Detail:", exerciseDetailData);
-
-        // =========================================
         // 2. EXERCISE GIF
-        // =========================================
 
         let gifUrl = "";
 
@@ -55,7 +47,6 @@ const ExerciseDetail = () => {
           if (mediaExercise?.gif_url) {
             gifUrl = `https://github.com/hasaneyldrm/exercises-dataset/raw/refs/heads/main/${mediaExercise.gif_url}`;
 
-            console.log("GIF URL:", gifUrl);
           }
         } catch (error) {
           console.error("GIF Error:", error);
@@ -68,9 +59,7 @@ const ExerciseDetail = () => {
 
         setExerciseDetail(finalExercise);
 
-        // =========================================
         // 3. YOUTUBE VIDEOS
-        // =========================================
 
         try {
           const apiKey = import.meta.env.VITE_YOUTUBE_RAPID_API_KEY;
@@ -90,7 +79,6 @@ const ExerciseDetail = () => {
             `&regionCode=IN` +
             `&key=${apiKey}`;
 
-          console.log("YouTube URL:", youtubeUrl.replace(apiKey, "HIDDEN"));
 
           const response = await fetch(youtubeUrl);
 
@@ -104,14 +92,11 @@ const ExerciseDetail = () => {
             );
           }
 
-          console.log("YouTube Data:", youtubeData);
 
           const formattedVideos = (youtubeData.items || []).map((item) => ({
             video: {
               videoId: item.id.videoId,
-
               title: item.snippet.title,
-
               thumbnails: [
                 {
                   url:
@@ -126,13 +111,10 @@ const ExerciseDetail = () => {
           setExerciseVideos(formattedVideos);
         } catch (error) {
           console.error("YouTube API Error:", error);
-
           setExerciseVideos([]);
         }
 
-        // =========================================
         // 4. TARGET MUSCLE EXERCISES
-        // =========================================
 
         try {
           const targetData = await fetchData(
@@ -147,13 +129,10 @@ const ExerciseDetail = () => {
           setTargetMuscleExercises(targetExercisesWithGif);
         } catch (error) {
           console.error("Target Exercises Error:", error);
-
           setTargetMuscleExercises([]);
         }
 
-        // =========================================
         // 5. EQUIPMENT EXERCISES
-        // =========================================
 
         try {
           const equipmentData = await fetchData(
@@ -164,16 +143,13 @@ const ExerciseDetail = () => {
           const equipmentExercisesWithGif = await getExercisesWithGif(
             equipmentData || [],
           );
-
           setEquipmentExercises(equipmentExercisesWithGif);
         } catch (error) {
           console.error("Equipment Exercises Error:", error);
-
           setEquipmentExercises([]);
         }
       } catch (error) {
         console.error("Exercise Detail Error:", error);
-
         setExerciseDetail(null);
       } finally {
         setLoading(false);
@@ -190,9 +166,7 @@ const ExerciseDetail = () => {
     });
   }, [id]);
 
-  // =========================================
   // LOADING
-  // =========================================
 
   if (loading) {
     return (
@@ -208,11 +182,7 @@ const ExerciseDetail = () => {
       </Box>
     );
   }
-
-  // =========================================
   // NO DATA
-  // =========================================
-
   if (!exerciseDetail) {
     return (
       <Typography
@@ -228,9 +198,7 @@ const ExerciseDetail = () => {
     );
   }
 
-  // =========================================
   // PAGE
-  // =========================================
 
   return (
     <Box
@@ -242,12 +210,10 @@ const ExerciseDetail = () => {
       }}
     >
       <Detail exerciseDetail={exerciseDetail} />
-
       <ExerciseVideos
         exerciseVideos={exerciseVideos}
         name={exerciseDetail.name}
       />
-
       <SimilarExercises
         targetMuscleExercises={targetMuscleExercises}
         equipmentExercises={equipmentExercises}
@@ -286,7 +252,6 @@ const getExercisesWithGif = async (exercises) => {
     });
   } catch (error) {
     console.error("GIF mapping error:", error);
-
     return exercises;
   }
 };

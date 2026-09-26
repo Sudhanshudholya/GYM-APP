@@ -1,12 +1,16 @@
 import React, { useEffect, useState } from "react";
 import Pagination from "@mui/material/Pagination";
 import { Box, Stack, Typography } from "@mui/material";
+
 import { exerciseOptions, fetchData } from "../utils/fetchData";
 import ExerciseCard from "./ExerciseCard";
 import Loader from "./Loader";
 
 const MEDIA_DATA_URL =
   "https://raw.githubusercontent.com/MHKarami97/exercises-dataset/main/data/exercises.json";
+
+const MEDIA_BASE_URL =
+  "https://raw.githubusercontent.com/MHKarami97/exercises-dataset/main/";
 
 const Exercises = ({ exercises, setExercises, bodyPart }) => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -22,21 +26,34 @@ const Exercises = ({ exercises, setExercises, bodyPart }) => {
       setCurrentPage(1);
 
       try {
-        // ==========================================
-        // 1. RAPIDAPI SE EXERCISES DATA
-        // ==========================================
-
         let exercisesData;
 
+        // GET EXERCISES FROM RAPIDAPI
+
         if (bodyPart === "all") {
-          exercisesData = await fetchData(
-            "https://exercisedb.p.rapidapi.com/exercises",
-            exerciseOptions
+          const bodyParts = await fetchData(
+            "https://exercisedb.p.rapidapi.com/exercises/bodyPartList",
+            exerciseOptions,
           );
+
+          const results = await Promise.all(
+            bodyParts.map((part) =>
+              fetchData(
+                `https://exercisedb.p.rapidapi.com/exercises/bodyPart/${encodeURIComponent(
+                  part,
+                )}`,
+                exerciseOptions,
+              ),
+            ),
+          );
+
+          exercisesData = results.flat();
         } else {
           exercisesData = await fetchData(
-            `https://exercisedb.p.rapidapi.com/exercises/bodyPart/${bodyPart}`,
-            exerciseOptions
+            `https://exercisedb.p.rapidapi.com/exercises/bodyPart/${encodeURIComponent(
+              bodyPart,
+            )}`,
+            exerciseOptions,
           );
         }
 
@@ -44,9 +61,7 @@ const Exercises = ({ exercises, setExercises, bodyPart }) => {
           throw new Error("Invalid exercises data");
         }
 
-        // ==========================================
-        // 2. IMAGE/MEDIA DATA
-        // ==========================================
+        // GET MEDIA DATA FROM GITHUB
 
         const mediaResponse = await fetch(MEDIA_DATA_URL);
 
@@ -56,48 +71,65 @@ const Exercises = ({ exercises, setExercises, bodyPart }) => {
 
         const mediaData = await mediaResponse.json();
 
-        // ==========================================
-        // 3. ID -> MEDIA ID MAP
-        // ==========================================
+        if (!Array.isArray(mediaData)) {
+          throw new Error("Invalid media data");
+        }
+
+        // NORMALIZE EXERCISE NAME
+
+        const normalizeName = (name = "") => {
+          return name
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, " ")
+            .trim();
+        };
+
+        //  CREATE ID -> MEDIA MAP
 
         const mediaMap = new Map(
-          mediaData.map((item) => [
-            String(item.id),
-            item.media_id,
-          ])
+          mediaData.map((item) => [String(item.id).padStart(4, "0"), item]),
         );
 
-        // ==========================================
-        // 4. RAPIDAPI DATA + IMAGE URL
-        // ==========================================
+        //  CREATE NAME -> MEDIA MAP
+
+        const mediaNameMap = new Map();
+
+        mediaData.forEach((item) => {
+          if (item.name) {
+            mediaNameMap.set(normalizeName(item.name), item);
+          }
+        });
+
+        // ADD GIF URL TO EXERCISES
 
         const exercisesWithImages = exercisesData.map((exercise) => {
-          const exerciseId = String(exercise.id);
+          const exerciseId = String(exercise.id).padStart(4, "0");
 
-          const mediaId = mediaMap.get(exerciseId);
+          // First try ID matching
+          let mediaItem = mediaMap.get(exerciseId);
+
+          // If ID doesn't match, try name matching
+          if (!mediaItem && exercise.name) {
+            mediaItem = mediaNameMap.get(normalizeName(exercise.name));
+          }
+
+          let gifUrl = null;
+
+          if (mediaItem?.gif_url) {
+            gifUrl = `${MEDIA_BASE_URL}${mediaItem.gif_url}`;
+          }
 
           return {
             ...exercise,
-
-            mediaId,
-
-            gifUrl: mediaId
-              ? `https://raw.githubusercontent.com/MHKarami97/exercises-dataset/main/videos/${exerciseId}-${mediaId}.gif`
-              : null,
+            gifUrl,
           };
         });
-
 
         setExercises(exercisesWithImages);
       } catch (err) {
         console.error("Exercises API Error:", err);
-
         setExercises([]);
-
-        setError(
-          err.message ||
-            "Unable to load exercises. Please try again."
-        );
+        setError(err?.message || "Unable to load exercises. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -106,49 +138,35 @@ const Exercises = ({ exercises, setExercises, bodyPart }) => {
     fetchExercisesData();
   }, [bodyPart, setExercises]);
 
-  // ==========================================
   // SAFE EXERCISES
-  // ==========================================
 
-  const safeExercises = Array.isArray(exercises)
-    ? exercises
-    : [];
+  const safeExercises = Array.isArray(exercises) ? exercises : [];
 
-  // ==========================================
   // PAGINATION
-  // ==========================================
 
-  const indexOfLastExercise =
-    currentPage * exercisesPerPage;
-
-  const indexOfFirstExercise =
-    indexOfLastExercise - exercisesPerPage;
+  const indexOfLastExercise = currentPage * exercisesPerPage;
+  const indexOfFirstExercise = indexOfLastExercise - exercisesPerPage;
 
   const currentExercises = safeExercises.slice(
     indexOfFirstExercise,
-    indexOfLastExercise
+    indexOfLastExercise,
   );
 
   const paginate = (event, value) => {
     setCurrentPage(value);
-
     window.scrollTo({
       top: 1800,
       behavior: "smooth",
     });
   };
 
-  // ==========================================
   // LOADING
-  // ==========================================
 
   if (loading) {
     return <Loader />;
   }
 
-  // ==========================================
   // ERROR
-  // ==========================================
 
   if (error) {
     return (
@@ -160,32 +178,31 @@ const Exercises = ({ exercises, setExercises, bodyPart }) => {
           textAlign: "center",
         }}
       >
-        <Typography
-          variant="h5"
-          fontWeight="bold"
-          sx={{ color: "#FF2625" }}
-        >
+        <Typography variant="h5" fontWeight="bold" sx={{ color: "#FF2625" }}>
           {error}
         </Typography>
 
-        <Typography sx={{ mt: 2 }}>
-          Please try again.
-        </Typography>
+        <Typography sx={{ mt: 2 }}>Please try again.</Typography>
       </Box>
     );
   }
 
-  // ==========================================
   // EMPTY
-  // ==========================================
 
   if (!safeExercises.length) {
-    return <Loader />;
+    return (
+      <Typography
+        sx={{
+          textAlign: "center",
+          mt: "100px",
+        }}
+      >
+        No exercises found.
+      </Typography>
+    );
   }
 
-  // ==========================================
   // UI
-  // ==========================================
 
   return (
     <Box
@@ -221,10 +238,7 @@ const Exercises = ({ exercises, setExercises, bodyPart }) => {
         }}
       >
         {currentExercises.map((exercise, idx) => (
-          <ExerciseCard
-            key={exercise.id || idx}
-            exercise={exercise}
-          />
+          <ExerciseCard key={exercise.id || idx} exercise={exercise} />
         ))}
       </Stack>
 
@@ -233,17 +247,15 @@ const Exercises = ({ exercises, setExercises, bodyPart }) => {
           mt: {
             lg: "114px",
             xs: "70px",
-            alignItems: "center",
           },
+          alignItems: "center",
         }}
       >
         {safeExercises.length > exercisesPerPage && (
           <Pagination
             color="standard"
             shape="rounded"
-            count={Math.ceil(
-              safeExercises.length / exercisesPerPage
-            )}
+            count={Math.ceil(safeExercises.length / exercisesPerPage)}
             page={currentPage}
             onChange={paginate}
             size="large"

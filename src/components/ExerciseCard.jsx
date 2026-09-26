@@ -2,10 +2,18 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button, Stack, Typography } from "@mui/material";
 
+const FALLBACK_IMAGE =
+  "https://raw.githubusercontent.com/MHKarami97/exercises-dataset/main/images/0716-oQRJYkC.jpg";
+
 const ExerciseCard = ({ exercise }) => {
   const [imageError, setImageError] = useState(false);
 
   const imageUrl = exercise?.gifUrl;
+
+  const finalImage =
+    imageUrl && !imageError
+      ? imageUrl
+      : FALLBACK_IMAGE;
 
   return (
     <Link
@@ -15,52 +23,28 @@ const ExerciseCard = ({ exercise }) => {
         textDecoration: "none",
       }}
     >
-      {/* ================================= */}
-      {/* EXERCISE IMAGE */}
-      {/* ================================= */}
+      <img
+        src={finalImage}
+        alt={exercise.name}
+        loading="lazy"
+        onError={(e) => {
+          console.error(
+            "Image failed:",
+            exercise.id,
+            finalImage
+          );
 
-      {imageUrl && !imageError ? (
-        <img
-          src={imageUrl}
-          alt={exercise.name}
-          loading="lazy"
-          onError={(e) => {
-            console.error(
-              "Image failed:",
-              exercise.id,
-              imageUrl
-            );
-
-            setImageError(true);
-          }}
-          style={{
-            width: "100%",
-            height: "300px",
-            objectFit: "contain",
-            display: "block",
-          }}
-        />
-      ) : (
-        <div
-          style={{
-            width: "100%",
-            height: "300px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "#f5f5f5",
-            color: "#777",
-            fontSize: "18px",
-            fontWeight: "bold",
-          }}
-        >
-          Image Not Available
-        </div>
-      )}
-
-      {/* ================================= */}
-      {/* TAGS */}
-      {/* ================================= */}
+          if (e.currentTarget.src !== FALLBACK_IMAGE) {
+            e.currentTarget.src = FALLBACK_IMAGE;
+          }
+        }}
+        style={{
+          width: "100%",
+          height: "300px",
+          objectFit: "contain",
+          display: "block",
+        }}
+      />
 
       <Stack
         direction="row"
@@ -100,10 +84,6 @@ const ExerciseCard = ({ exercise }) => {
         </Button>
       </Stack>
 
-      {/* ================================= */}
-      {/* NAME */}
-      {/* ================================= */}
-
       <Typography
         ml="21px"
         color="#000"
@@ -123,5 +103,4 @@ const ExerciseCard = ({ exercise }) => {
     </Link>
   );
 };
-
 export default ExerciseCard;

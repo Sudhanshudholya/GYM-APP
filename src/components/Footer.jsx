@@ -38,7 +38,7 @@ const Footer = () => (
         textAlign: "center",
       }}
     >
-      Made with ❤️ by Sudhanshu
+      Made By Sudhanshu ❣️
     </Typography>
   </Box>
 );

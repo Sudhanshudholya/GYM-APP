@@ -54,12 +54,10 @@ const SearchExercises = ({
 
   const handleSearch = async () => {
     const searchValue = search.trim().toLowerCase();
-
     if (!searchValue) return;
 
     try {
       setError("");
-
       const exercisesData = await fetchData(
         "https://exercisedb.p.rapidapi.com/exercises",
         exerciseOptions
